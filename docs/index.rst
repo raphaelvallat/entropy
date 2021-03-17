@@ -22,11 +22,16 @@
 EntroPy is a Python 3 package providing several time-efficient algorithms for computing the complexity of time-series.
 It can be used for example to extract features from EEG signals.
 
+.. warning::
+    EntroPy is now **DEPRECATED**. Please use the `AntroPy package <https://github.com/raphaelvallat/antropy>`_ instead!
+
 Installation
 ============
 
+EntroPy is now **DEPRECATED** because it could not be installed using pip (see below). Please use the `AntroPy package <https://github.com/raphaelvallat/antropy>`_ instead!
+
 .. important::
-  EntroPy **CANNOT BE INSTALLED WITH PIP OR CONDA**.
+  EntroPy CANNOT BE INSTALLED WITH PIP OR CONDA.
   There is already a package called *entropy* on the `PyPi repository <https://pypi.org/project/entropy/>`_,
   which should NOT be mistaken with the current package.
 
