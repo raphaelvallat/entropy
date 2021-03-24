@@ -813,7 +813,7 @@ def lziv_complexity(sequence, normalize=False):
         # return _lz_complexity(s) / _lz_complexity(s_shuffled)
         # 2) Zhang et al. 2009
         n = len(s)
-        base = len(np.bincount(s) > 0)  # Number of unique characters
+        base = sum(np.bincount(s) > 0)  # Number of unique characters
         base = 2 if base < 2 else base
         return _lz_complexity(s) / (n / log(n, base))
     else:
