@@ -649,7 +649,7 @@ def sample_entropy(x, order=2, metric='chebyshev'):
         return -np.log(np.divide(phi[1], phi[0]))
 
 
-@jit("uint64(uint64[:])", nopython=True)
+@jit("uint32(uint32[:])", nopython=True)
 def _lz_complexity(binary_string):
     """Internal Numba implementation of the Lempel-Ziv (LZ) complexity.
 
@@ -791,14 +791,14 @@ def lziv_complexity(sequence, normalize=False):
         sequence = np.asarray(sequence)
         if sequence.dtype.kind in 'bfi':
             # Convert [True, False] or [1., 0.] to [1, 0]
-            s = sequence.astype("uint64")
+            s = sequence.astype("uint32")
         else:
             # Treat as numpy array of strings
             # Map string characters to utf-8 integer representation
-            s = np.fromiter(map(ord, "".join(sequence.astype(str))), dtype="uint64")
-            # Can't preallocate length (by specifying ocunt) due to string concatenation
+            s = np.fromiter(map(ord, "".join(sequence.astype(str))), dtype="uint32")
+            # Can't preallocate length (by specifying count) due to string concatenation
     else:
-        s = np.fromiter(map(ord, sequence), dtype="uint64")
+        s = np.fromiter(map(ord, sequence), dtype="uint32")
 
     if normalize:
         # 1) Timmermann et al. 2019
@@ -813,7 +813,7 @@ def lziv_complexity(sequence, normalize=False):
         # return _lz_complexity(s) / _lz_complexity(s_shuffled)
         # 2) Zhang et al. 2009
         n = len(s)
-        base = len(set(s))  # Number of unique characters
+        base = len(np.bincount(s) > 0)  # Number of unique characters
         base = 2 if base < 2 else base
         return _lz_complexity(s) / (n / log(n, base))
     else:
