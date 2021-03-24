@@ -852,6 +852,7 @@ def lziv_complexity(sequence, normalize=False):
         n = len(s)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         base = sum(np.bincount(s) > 0)  # Number of unique characters
 =======
         base = len(set(s))  # Number of unique characters
@@ -859,6 +860,9 @@ def lziv_complexity(sequence, normalize=False):
 =======
         base = len(np.bincount(s) > 0)  # Number of unique characters
 >>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
+=======
+        base = sum(np.bincount(s) > 0)  # Number of unique characters
+>>>>>>> 938fda8 (Quick bug fix in base estimation)
         base = 2 if base < 2 else base
         return _lz_complexity(s) / (n / log(n, base))
     else:
