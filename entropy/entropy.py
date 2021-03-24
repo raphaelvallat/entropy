@@ -660,10 +660,14 @@ def sample_entropy(x, order=2, metric='chebyshev'):
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 @jit("uint32(uint32[:])", nopython=True)
 =======
 @jit("uint64(uint64[:])", nopython=True)
 >>>>>>> 7c30753 (Updated LZ complexity estimation with speed bump and integer typing)
+=======
+@jit("uint32(uint32[:])", nopython=True)
+>>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
 def _lz_complexity(binary_string):
     """Internal Numba implementation of the Lempel-Ziv (LZ) complexity.
 
@@ -806,6 +810,7 @@ def lziv_complexity(sequence, normalize=False):
         if sequence.dtype.kind in 'bfi':
             # Convert [True, False] or [1., 0.] to [1, 0]
 <<<<<<< HEAD
+<<<<<<< HEAD
             s = sequence.astype("uint32")
         else:
             # Treat as numpy array of strings
@@ -816,14 +821,21 @@ def lziv_complexity(sequence, normalize=False):
         s = np.fromiter(map(ord, sequence), dtype="uint32")
 =======
             s = sequence.astype("uint64")
+=======
+            s = sequence.astype("uint32")
+>>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
         else:
             # Treat as numpy array of strings
             # Map string characters to utf-8 integer representation
-            s = np.fromiter(map(ord, "".join(sequence.astype(str))), dtype="uint64")
-            # Can't preallocate length (by specifying ocunt) due to string concatenation
+            s = np.fromiter(map(ord, "".join(sequence.astype(str))), dtype="uint32")
+            # Can't preallocate length (by specifying count) due to string concatenation
     else:
+<<<<<<< HEAD
         s = np.fromiter(map(ord, sequence), dtype="uint64")
 >>>>>>> 7c30753 (Updated LZ complexity estimation with speed bump and integer typing)
+=======
+        s = np.fromiter(map(ord, sequence), dtype="uint32")
+>>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
 
     if normalize:
         # 1) Timmermann et al. 2019
@@ -839,10 +851,14 @@ def lziv_complexity(sequence, normalize=False):
         # 2) Zhang et al. 2009
         n = len(s)
 <<<<<<< HEAD
+<<<<<<< HEAD
         base = sum(np.bincount(s) > 0)  # Number of unique characters
 =======
         base = len(set(s))  # Number of unique characters
 >>>>>>> 7c30753 (Updated LZ complexity estimation with speed bump and integer typing)
+=======
+        base = len(np.bincount(s) > 0)  # Number of unique characters
+>>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
         base = 2 if base < 2 else base
         return _lz_complexity(s) / (n / log(n, base))
     else:
