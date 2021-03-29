@@ -8,7 +8,7 @@ from scipy.signal import periodogram, welch
 from .utils import _embed
 
 all = ['perm_entropy', 'spectral_entropy', 'svd_entropy', 'app_entropy',
-       'sample_entropy', 'lziv_complexity']
+       'sample_entropy', 'lziv_complexity', 'num_zerocross', 'hjorth_params']
 
 
 def perm_entropy(x, order=3, delay=1, normalize=False):
@@ -136,13 +136,14 @@ def perm_entropy(x, order=3, delay=1, normalize=False):
     return pe
 
 
-def spectral_entropy(x, sf, method='fft', nperseg=None, normalize=False):
+def spectral_entropy(x, sf, method='fft', nperseg=None, normalize=False,
+                     axis=-1):
     """Spectral Entropy.
 
     Parameters
     ----------
     x : list or np.array
-        One-dimensional time series of shape (n_times)
+        1D or N-D data.
     sf : float
         Sampling frequency, in Hz.
     method : str
@@ -156,6 +157,8 @@ def spectral_entropy(x, sf, method='fft', nperseg=None, normalize=False):
     normalize : bool
         If True, divide by log2(psd.size) to normalize the spectral entropy
         between 0 and 1. Otherwise, return the spectral entropy in bit.
+    axis : int
+        The axis along which the entropy is calculated. Default is -1 (last).
 
     Returns
     -------
@@ -174,13 +177,13 @@ def spectral_entropy(x, sf, method='fft', nperseg=None, normalize=False):
 
     References
     ----------
-    Inouye, T. et al. (1991). Quantification of EEG irregularity by
-    use of the entropy of the power spectrum. Electroencephalography
-    and clinical neurophysiology, 79(3), 204-210.
+    - Inouye, T. et al. (1991). Quantification of EEG irregularity by
+      use of the entropy of the power spectrum. Electroencephalography
+      and clinical neurophysiology, 79(3), 204-210.
 
-    https://en.wikipedia.org/wiki/Spectral_density
+    - https://en.wikipedia.org/wiki/Spectral_density
 
-    https://en.wikipedia.org/wiki/Welch%27s_method
+    - https://en.wikipedia.org/wiki/Welch%27s_method
 
     Examples
     --------
@@ -207,6 +210,13 @@ def spectral_entropy(x, sf, method='fft', nperseg=None, normalize=False):
     >>> ent.spectral_entropy(x, sf=100, method='welch', normalize=True)
     0.9955526198316071
 
+    Normalized spectral entropy of 2D data
+
+    >>> np.random.seed(42)
+    >>> x = np.random.normal(size=(4, 3000))
+    >>> np.round(ent.spectral_entropy(x, sf=100, normalize=True), 4)
+    array([0.9464, 0.9428, 0.9431, 0.9417])
+
     Fractional Gaussian noise with H = 0.5
 
     >>> import stochastic.processes.noise as sn
@@ -229,16 +239,16 @@ def spectral_entropy(x, sf, method='fft', nperseg=None, normalize=False):
     >>> print(f"{ent.spectral_entropy(x, sf=100, normalize=True):.4f}")
     0.9248
     """
-    x = np.array(x)
+    x = np.asarray(x)
     # Compute and normalize power spectrum
     if method == 'fft':
-        _, psd = periodogram(x, sf)
+        _, psd = periodogram(x, sf, axis=axis)
     elif method == 'welch':
-        _, psd = welch(x, sf, nperseg=nperseg)
-    psd_norm = np.divide(psd, psd.sum())
-    se = -np.multiply(psd_norm, np.log2(psd_norm)).sum()
+        _, psd = welch(x, sf, nperseg=nperseg, axis=axis)
+    psd_norm = psd / psd.sum(axis=axis, keepdims=True)
+    se = -(psd_norm * np.log2(psd_norm)).sum(axis=axis)
     if normalize:
-        se /= np.log2(psd_norm.size)
+        se /= np.log2(psd_norm.shape[axis])
     return se
 
 
@@ -652,9 +662,7 @@ def sample_entropy(x, order=2, metric='chebyshev'):
 @jit("uint32(uint32[:])", nopython=True)
 def _lz_complexity(binary_string):
     """Internal Numba implementation of the Lempel-Ziv (LZ) complexity.
-
     https://github.com/Naereen/Lempel-Ziv_Complexity/blob/master/src/lziv_complexity.py
-
     - Updated with strict integer typing instead of strings
     - Slight restructuring based on Yacine Mahdid's notebook:
     https://github.com/BIAPT/Notebooks/blob/master/features/Lempel-Ziv%20Complexity.ipynb
@@ -706,9 +714,7 @@ def _lz_complexity(binary_string):
 def lziv_complexity(sequence, normalize=False):
     """
     Lempel-Ziv (LZ) complexity of (binary) sequence.
-
     .. versionadded:: 0.1.1
-
     Parameters
     ----------
     sequence : str or array
@@ -716,7 +722,6 @@ def lziv_complexity(sequence, normalize=False):
         ``[0, 1, 0, 1, 1]``, or ``'Hello World!'``.
     normalize : bool
         If ``True``, returns the normalized LZ (see Notes).
-
     Returns
     -------
     lz : int or float
@@ -724,38 +729,29 @@ def lziv_complexity(sequence, normalize=False):
         substrings encountered as the stream is viewed from the
         beginning to the end. If ``normalize=False``, the output is an
         integer (counts), otherwise the output is a float.
-
     Notes
     -----
     LZ complexity is defined as the number of different substrings encountered
     as the sequence is viewed from begining to the end.
-
     Although the raw LZ is an important complexity indicator, it is heavily
     influenced by sequence length (longer sequence will result in higher LZ).
     Zhang and colleagues (2009) have therefore proposed the normalized LZ,
     which is defined by
-
     .. math:: \\text{LZn} = \\frac{\\text{LZ}}{(n / \\log_b{n})}
-
     where :math:`n` is the length of the sequence and :math:`b` the number of
     unique characters in the sequence.
-
     References
     ----------
     * Lempel, A., & Ziv, J. (1976). On the Complexity of Finite Sequences.
       IEEE Transactions on Information Theory / Professional Technical
       Group on Information Theory, 22(1), 75–81.
       https://doi.org/10.1109/TIT.1976.1055501
-
     * Zhang, Y., Hao, J., Zhou, C., & Chang, K. (2009). Normalized
       Lempel-Ziv complexity and its application in bio-sequence analysis.
       Journal of Mathematical Chemistry, 46(4), 1203–1212.
       https://doi.org/10.1007/s10910-008-9512-2
-
     * https://en.wikipedia.org/wiki/Lempel-Ziv_complexity
-
     * https://github.com/Naereen/Lempel-Ziv_Complexity
-
     Examples
     --------
     >>> from entropy import lziv_complexity
@@ -763,24 +759,17 @@ def lziv_complexity(sequence, normalize=False):
     >>> s = '1001111011000010'
     >>> lziv_complexity(s)
     6
-
     Using a list of integer / boolean instead of a string:
-
     >>> # 1 / 0 / 10
     >>> lziv_complexity([1, 0, 1, 0, 1, 0, 1, 0, 1, 0])
     3
-
     With normalization:
-
     >>> lziv_complexity(s, normalize=True)
     1.5
-
     This function also works with characters and words:
-
     >>> s = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     >>> lziv_complexity(s), lziv_complexity(s, normalize=True)
     (26, 1.0)
-
     >>> s = 'HELLO WORLD! HELLO WORLD! HELLO WORLD! HELLO WORLD!'
     >>> lziv_complexity(s), lziv_complexity(s, normalize=True)
     (11, 0.38596001132145313)
@@ -818,4 +807,195 @@ def lziv_complexity(sequence, normalize=False):
         return _lz_complexity(s) / (n / log(n, base))
     else:
         return _lz_complexity(s)
+
+
+###############################################################################
+# OTHER TIME-DOMAIN METRICS
+###############################################################################
+
+def num_zerocross(x, normalize=False, axis=-1):
+    """Number of zero-crossings.
+
+    .. versionadded: 0.1.3
+
+    Parameters
+    ----------
+    x : list or np.array
+        1D or N-D data.
+    normalize : bool
+        If True, divide by the number of samples to normalize the output
+        between 0 and 1. Otherwise, return the absolute number of zero
+        crossings.
+    axis : int
+        The axis along which to perform the computation. Default is -1 (last).
+
+    Returns
+    -------
+    nzc : int or float
+        Number of zero-crossings.
+
+    Examples
+    --------
+    Simple examples
+
+    >>> import numpy as np
+    >>> import entropy as ent
+    >>> ent.num_zerocross([-1, 0, 1, 2, 3])
+    1
+
+    >>> ent.num_zerocross([0, 0, 2, -1, 0, 1, 0, 2])
+    2
+
+    Number of zero crossings of a pure sine
+
+    >>> import numpy as np
+    >>> import entropy as ent
+    >>> sf, f, dur = 100, 1, 4
+    >>> N = sf * dur # Total number of discrete samples
+    >>> t = np.arange(N) / sf # Time vector
+    >>> x = np.sin(2 * np.pi * f * t)
+    >>> ent.num_zerocross(x)
+    7
+
+    Random 2D data
+
+    >>> np.random.seed(42)
+    >>> x = np.random.normal(size=(4, 3000))
+    >>> ent.num_zerocross(x)
+    array([1499, 1528, 1547, 1457])
+
+    Same but normalized by the number of samples
+
+    >>> np.round(ent.num_zerocross(x, normalize=True), 4)
+    array([0.4997, 0.5093, 0.5157, 0.4857])
+
+    Fractional Gaussian noise with H = 0.5
+
+    >>> import stochastic.processes.noise as sn
+    >>> rng = np.random.default_rng(seed=42)
+    >>> x = sn.FractionalGaussianNoise(hurst=0.5, rng=rng).sample(10000)
+    >>> print(f"{ent.num_zerocross(x, normalize=True):.4f}")
+    0.4973
+
+    Fractional Gaussian noise with H = 0.9
+
+    >>> rng = np.random.default_rng(seed=42)
+    >>> x = sn.FractionalGaussianNoise(hurst=0.9, rng=rng).sample(10000)
+    >>> print(f"{ent.num_zerocross(x, normalize=True):.4f}")
+    0.2615
+
+    Fractional Gaussian noise with H = 0.1
+
+    >>> rng = np.random.default_rng(seed=42)
+    >>> x = sn.FractionalGaussianNoise(hurst=0.1, rng=rng).sample(10000)
+    >>> print(f"{ent.num_zerocross(x, normalize=True):.4f}")
+    0.6451
+    """
+    x = np.asarray(x)
+    # https://stackoverflow.com/a/29674950/10581531
+    nzc = np.diff(np.signbit(x), axis=axis).sum(axis=axis)
+    if normalize:
+        nzc = nzc / x.shape[axis]
+    return nzc
+
+
+def hjorth_params(x, axis=-1):
+    """Calculate Hjorth mobility and complexity on given axis.
+
+    .. versionadded: 0.1.3
+
+    Parameters
+    ----------
+    x : list or np.array
+        1D or N-D data.
+    axis : int
+        The axis along which to perform the computation. Default is -1 (last).
+
+    Returns
+    -------
+    mobility, complexity : float
+        Mobility and complexity parameters.
+
+    Notes
+    -----
+    Hjorth Parameters are indicators of statistical properties used in signal
+    processing in the time domain introduced by Bo Hjorth in 1970. The
+    parameters are activity, mobility, and complexity. EntroPy only returns the
+    mobility and complexity parameters, since activity is simply the variance
+    of :math:`x`, which can be computed easily with :py:func:`numpy.var`.
+
+    The **mobility** parameter represents the mean frequency or the proportion
+    of standard deviation of the power spectrum. This is defined as the square
+    root of variance of the first derivative of :math:`x` divided by the
+    variance of :math:`x`.
+
+    The **complexity** gives an estimate of the bandwidth of the signal, which
+    indicates the similarity of the shape of the signal to a pure sine wave
+    (where the value converges to 1). Complexity is defined as the ratio of
+    the mobility of the first derivative of :math:`x` to the mobility of
+    :math:`x`.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Hjorth_parameters
+    - https://doi.org/10.1016%2F0013-4694%2870%2990143-4
+
+    Examples
+    --------
+    Hjorth parameters of a pure sine
+
+    >>> import numpy as np
+    >>> import entropy as ent
+    >>> sf, f, dur = 100, 1, 4
+    >>> N = sf * dur # Total number of discrete samples
+    >>> t = np.arange(N) / sf # Time vector
+    >>> x = np.sin(2 * np.pi * f * t)
+    >>> np.round(ent.hjorth_params(x), 4)
+    array([0.0627, 1.005 ])
+
+    Random 2D data
+
+    >>> np.random.seed(42)
+    >>> x = np.random.normal(size=(4, 3000))
+    >>> mob, com = ent.hjorth_params(x)
+    >>> print(mob)
+    [1.42145064 1.4339572  1.42186993 1.40587512]
+
+    >>> print(com)
+    [1.21877527 1.21092261 1.217278   1.22623163]
+
+    Fractional Gaussian noise with H = 0.5
+
+    >>> import stochastic.processes.noise as sn
+    >>> rng = np.random.default_rng(seed=42)
+    >>> x = sn.FractionalGaussianNoise(hurst=0.5, rng=rng).sample(10000)
+    >>> np.round(ent.hjorth_params(x), 4)
+    array([1.4073, 1.2283])
+
+    Fractional Gaussian noise with H = 0.9
+
+    >>> rng = np.random.default_rng(seed=42)
+    >>> x = sn.FractionalGaussianNoise(hurst=0.9, rng=rng).sample(10000)
+    >>> np.round(ent.hjorth_params(x), 4)
+    array([0.8395, 1.9143])
+
+    Fractional Gaussian noise with H = 0.1
+
+    >>> rng = np.random.default_rng(seed=42)
+    >>> x = sn.FractionalGaussianNoise(hurst=0.1, rng=rng).sample(10000)
+    >>> np.round(ent.hjorth_params(x), 4)
+    array([1.6917, 1.0717])
+    """
+    x = np.asarray(x)
+    # Calculate derivatives
+    dx = np.diff(x, axis=axis)
+    ddx = np.diff(dx, axis=axis)
+    # Calculate variance
+    x_var = np.var(x, axis=axis)  # = activity
+    dx_var = np.var(dx, axis=axis)
+    ddx_var = np.var(ddx, axis=axis)
+    # Mobility and complexity
+    mob = np.sqrt(dx_var / x_var)
+    com = np.sqrt(ddx_var / dx_var) / mob
+    return mob, com
 
