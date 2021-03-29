@@ -3,18 +3,21 @@ import numpy as np
 from numba import jit
 from math import log, floor
 
+from .entropy import num_zerocross
 from .utils import _linear_regression, _log_n
 
 all = ['petrosian_fd', 'katz_fd', 'higuchi_fd', 'detrended_fluctuation']
 
 
-def petrosian_fd(x):
+def petrosian_fd(x, axis=-1):
     """Petrosian fractal dimension.
 
     Parameters
     ----------
     x : list or np.array
-        One dimensional time series.
+        1D or N-D data.
+    axis : int
+        The axis along which the FD is calculated. Default is -1 (last).
 
     Returns
     -------
@@ -82,26 +85,29 @@ def petrosian_fd(x):
     >>> print(f"{ent.petrosian_fd(x):.4f}")
     1.0010
 
-    Linearly-increasing time-series
+    Linearly-increasing time-series (should be 1)
 
     >>> x = np.arange(1000)
     >>> print(f"{ent.petrosian_fd(x):.4f}")
     1.0000
     """
-    n = len(x)
+    x = np.asarray(x)
+    N = x.shape[axis]
     # Number of sign changes in the first derivative of the signal
-    diff = np.ediff1d(x)
-    N_delta = (diff[1:-1] * diff[0:-2] < 0).sum()
-    return np.log10(n) / (np.log10(n) + np.log10(n / (n + 0.4 * N_delta)))
+    nzc_deriv = num_zerocross(np.diff(x, axis=axis), axis=axis)
+    pfd = np.log10(N) / (np.log10(N) + np.log10(N / (N + 0.4 * nzc_deriv)))
+    return pfd
 
 
-def katz_fd(x):
+def katz_fd(x, axis=-1):
     """Katz Fractal Dimension.
 
     Parameters
     ----------
     x : list or np.array
-        One dimensional time series.
+        1D or N-D data.
+    axis : int
+        The axis along which the FD is calculated. Default is -1 (last).
 
     Returns
     -------
@@ -110,29 +116,29 @@ def katz_fd(x):
 
     Notes
     -----
-    The Katz fractal dimension is defined by:
+    Katz’s method calculates the fractal dimension of a sample as follows:
+    the sum and average of the Euclidean distances between the successive
+    points of the sample (:math:`L` and :math:`a` , resp.) are calculated as
+    well as the maximum distance between the first point and any other point
+    of the sample (:math:`d`). The fractal dimension of the sample (:math:`D`)
+    then becomes:
 
-    .. math:: K = \\frac{\\log_{10}(n)}{\\log_{10}(d/L)+\\log_{10}(n)}
+    .. math::
+        D = \\frac{\\log_{10}(L/a)}{\\log_{10}(d/a)} =
+        \\frac{\\log_{10}(n)}{\\log_{10}(d/L)+\\log_{10}(n)}
 
-    where :math:`L` is the total length of the time series and :math:`d`
-    is the
-    `Euclidean distance <https://en.wikipedia.org/wiki/Euclidean_distance>`_
-    between the first point in the series and the point that provides the
-    furthest distance with respect to the first point.
+    where :math:`n` is :math:`L` divided by :math:`a`.
 
     Original code from the `mne-features <https://mne.tools/mne-features/>`_
     package by Jean-Baptiste Schiratti and Alexandre Gramfort.
 
     References
     ----------
-    * Esteller, R. et al. (2001). A comparison of waveform fractal
-      dimension algorithms. IEEE Transactions on Circuits and Systems I:
-      Fundamental Theory and Applications, 48(2), 177-183.
+    * https://ieeexplore.ieee.org/abstract/document/904882
 
-    * Goh, Cindy, et al. "Comparison of fractal dimension algorithms for
-      the computation of EEG biomarkers for dementia." 2nd International
-      Conference on Computational Intelligence in Medicine and Healthcare
-      (CIMED2005). 2005.
+    * https://hal.inria.fr/inria-00442374/
+
+    * https://www.hindawi.com/journals/ddns/2011/724697/
 
     Examples
     --------
@@ -170,19 +176,22 @@ def katz_fd(x):
     >>> print(f"{ent.katz_fd(x):.4f}")
     2.4871
 
-    Linearly-increasing time-series
+    Linearly-increasing time-series (should be 1)
 
     >>> x = np.arange(1000)
     >>> print(f"{ent.katz_fd(x):.4f}")
     1.0000
     """
-    x = np.array(x)
-    dists = np.abs(np.ediff1d(x))
-    ll = dists.sum()
-    ln = np.log10(np.divide(ll, dists.mean()))
-    aux_d = x - x[0]
-    d = np.max(np.abs(aux_d[1:]))
-    return np.divide(ln, np.add(ln, np.log10(np.divide(d, ll))))
+    x = np.asarray(x)
+    dists = np.abs(np.diff(x, axis=axis))
+    ll = dists.sum(axis=axis)
+    ln = np.log10(ll / dists.mean(axis=axis))
+    aux_d = x - np.take(x, indices=[0], axis=axis)
+    d = np.max(np.abs(aux_d), axis=axis)
+    kfd = np.squeeze(ln / (ln + np.log10(d / ll)))
+    if not kfd.ndim:
+        kfd = kfd.item()
+    return kfd
 
 
 @jit('float64(float64[:], int32)')

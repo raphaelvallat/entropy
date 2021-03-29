@@ -3,10 +3,17 @@
 What's new
 ##########
 
-v0.1.3 (dev)
-------------
+.. warning::
+    EntroPy is now **DEPRECATED**. Please use the `AntroPy package <https://github.com/raphaelvallat/antropy>`_ instead!
 
-a. Use the `stochastic <https://github.com/crflynn/stochastic>`_ package to generate stochastic time-series.
+
+v0.1.3 (March 2021)
+-------------------
+
+a. Added the :py:func:`entropy.num_zerocross` function to calculate the (normalized) number of zero-crossings on N-D data.
+b. Added the :py:func:`entropy.hjorth_params` function to calculate the mobility and complexity Hjorth parameters on N-D data.
+c. Add support for N-D data in :py:func:`entropy.spectral_entropy`, :py:func:`entropy.petrosian_fd` and :py:func:`entropy.katz_fd`.
+d. Use the `stochastic <https://github.com/crflynn/stochastic>`_ package to generate stochastic time-series.
 
 v0.1.2 (May 2020)
 -----------------

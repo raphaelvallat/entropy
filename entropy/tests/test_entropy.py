@@ -1,15 +1,23 @@
-import numpy as np
+from entropy.entropy import hjorth_params
 import unittest
-
+import numpy as np
+from numpy.testing import assert_equal
+from numpy import apply_along_axis as aal
 from entropy import (perm_entropy, spectral_entropy, svd_entropy,
-                     sample_entropy, app_entropy, lziv_complexity)
+                     sample_entropy, app_entropy, lziv_complexity,
+                     num_zerocross)
 
 np.random.seed(1234567)
 RANDOM_TS = np.random.rand(3000)
+NORMAL_TS = np.random.normal(size=3000)
 RANDOM_TS_LONG = np.random.rand(6000)
 SF_TS = 100
 BANDT_PERM = [4, 7, 9, 10, 6, 11, 3]
 PURE_SINE = np.sin(2 * np.pi * 1 * np.arange(3000) / 100)
+ARANGE = np.arange(3000)
+
+# Concatenate 2D data
+data = np.vstack((RANDOM_TS, NORMAL_TS, PURE_SINE, ARANGE))
 
 
 class TestEntropy(unittest.TestCase):
@@ -36,6 +44,10 @@ class TestEntropy(unittest.TestCase):
         self.assertEqual(np.round(spectral_entropy(RANDOM_TS, SF_TS,
                                                    normalize=True), 1), 0.9)
         self.assertEqual(np.round(spectral_entropy(PURE_SINE, 100), 2), 0.0)
+        # 2D data
+        params = dict(sf=SF_TS, normalize=True, method='welch', nperseg=100)
+        assert_equal(aal(spectral_entropy, axis=1, arr=data, **params),
+                     spectral_entropy(data, **params))
 
     def test_svd_entropy(self):
         svd_entropy(RANDOM_TS, order=3, delay=1, normalize=False)
@@ -101,3 +113,22 @@ class TestEntropy(unittest.TestCase):
         s = ['A'] * 10000
         assert lziv_complexity(s) == 2
         assert lziv_complexity(s, normalize=True) < 0.01
+
+    def test_num_zerocross(self):
+        assert num_zerocross([-1, 0, 1, 2, 3]) == 1
+        assert num_zerocross([-1, 1, 2, -1]) == 2
+        assert num_zerocross([0, 0, 2, -1, 0, 1, 0, 2]) == 2
+        # 2D data
+        assert_equal(aal(num_zerocross, axis=0, arr=data),
+                     num_zerocross(data, axis=0))
+        assert_equal(aal(num_zerocross, axis=-1, arr=data, normalize=True),
+                     num_zerocross(data, axis=-1, normalize=True))
+
+    def test_hjorth_params(self):
+        mob, com = hjorth_params(RANDOM_TS)
+        mob_sine, com_sine = hjorth_params(PURE_SINE)
+        assert mob_sine < mob
+        assert com_sine < com
+        # 2D data (avoid warning with flat line variance)
+        assert_equal(aal(hjorth_params, axis=-1, arr=data[:-1, :]).T,
+                     hjorth_params(data[:-1, :], axis=-1))
