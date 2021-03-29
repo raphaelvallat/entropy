@@ -661,6 +661,7 @@ def sample_entropy(x, order=2, metric='chebyshev'):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 @jit("uint32(uint32[:])", nopython=True)
 =======
 @jit("uint64(uint64[:])", nopython=True)
@@ -668,6 +669,9 @@ def sample_entropy(x, order=2, metric='chebyshev'):
 =======
 @jit("uint32(uint32[:])", nopython=True)
 >>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
+=======
+@jit("uint32(uint32[:])", nopython=True)
+>>>>>>> 08e2e033c798e2a03bf02ffa13d80336c5ab4971
 def _lz_complexity(binary_string):
     """Internal Numba implementation of the Lempel-Ziv (LZ) complexity.
 
@@ -811,12 +815,16 @@ def lziv_complexity(sequence, normalize=False):
             # Convert [True, False] or [1., 0.] to [1, 0]
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 08e2e033c798e2a03bf02ffa13d80336c5ab4971
             s = sequence.astype("uint32")
         else:
             # Treat as numpy array of strings
             # Map string characters to utf-8 integer representation
             s = np.fromiter(map(ord, "".join(sequence.astype(str))), dtype="uint32")
             # Can't preallocate length (by specifying count) due to string concatenation
+<<<<<<< HEAD
     else:
         s = np.fromiter(map(ord, sequence), dtype="uint32")
 =======
@@ -836,6 +844,10 @@ def lziv_complexity(sequence, normalize=False):
 =======
         s = np.fromiter(map(ord, sequence), dtype="uint32")
 >>>>>>> 59584bb (Switched all dtypes to 32-bit unsigned integers instead of 64-bit)
+=======
+    else:
+        s = np.fromiter(map(ord, sequence), dtype="uint32")
+>>>>>>> 08e2e033c798e2a03bf02ffa13d80336c5ab4971
 
     if normalize:
         # 1) Timmermann et al. 2019
@@ -853,6 +865,7 @@ def lziv_complexity(sequence, normalize=False):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         base = sum(np.bincount(s) > 0)  # Number of unique characters
 =======
         base = len(set(s))  # Number of unique characters
@@ -863,6 +876,9 @@ def lziv_complexity(sequence, normalize=False):
 =======
         base = sum(np.bincount(s) > 0)  # Number of unique characters
 >>>>>>> 938fda8 (Quick bug fix in base estimation)
+=======
+        base = sum(np.bincount(s) > 0)  # Number of unique characters
+>>>>>>> 08e2e033c798e2a03bf02ffa13d80336c5ab4971
         base = 2 if base < 2 else base
         return _lz_complexity(s) / (n / log(n, base))
     else:
