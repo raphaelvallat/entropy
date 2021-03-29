@@ -7,6 +7,12 @@ What's new
     EntroPy is now **DEPRECATED**. Please use the `AntroPy package <https://github.com/raphaelvallat/antropy>`_ instead!
 
 
+v0.1.4 (March 2021)
+-------------------
+
+a. Updated :py:func:`entropy.lziv_complexity` using integer arrays with `Numba` in ``this pull request <https://github.com/raphaelvallat/entropy/pull/16>`_ 
+b. :py:func:`entropy.lziv_complexity` now maps strings to UTF-8 integer representations, and uses `np.bincount` for computing base
+
 v0.1.3 (March 2021)
 -------------------
 
